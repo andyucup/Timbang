@@ -48,14 +48,20 @@
 </div>
 
 <script>
-    // Menyiapkan kamera
     let video = document.getElementById("video");
     let canvas = document.getElementById("canvas");
     let context = canvas.getContext("2d");
     let takePhotoButton = document.getElementById("takePhoto");
 
+    // Fungsi untuk memulai kamera belakang
     async function startCamera() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const constraints = {
+            video: {
+                facingMode: "environment" // Memilih kamera belakang (utama)
+            }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
     }
 

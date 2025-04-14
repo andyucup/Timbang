@@ -1,164 +1,109 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Penimbangan Mobil Pick-Up</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: #f2f2f2;
-    }
-    select, input[type="file"] {
-      padding: 5px;
-      font-size: 16px;
-      margin-top: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    #reader {
-      width: 320px;
-      margin: 20px auto;
-    }
-    table {
-      margin-top: 20px;
-      margin-bottom: 20px;
-      border-collapse: collapse;
-      width: 80%;
-      background: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    th, td {
-      padding: 12px;
-      border: 1px solid #ccc;
-      text-align: left;
-    }
-    th {
-      background: #2c3e50;
-      color: white;
-    }
-    #hasil {
-      font-weight: bold;
-      margin-top: 20px;
-      color: green;
-    }
-    #total {
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 20px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pick-Up Mobil & Hitung Pembayaran</title>
 </head>
 <body>
 
-  <h2>Penimbangan Mobil Pick-Up</h2>
-  
-  <label for="mobil">Pilih Jenis Mobil:</label>
-  <select id="mobil">
-    <option value="1000">Toyota Hilux (1000 kg)</option>
-    <option value="1500">Isuzu D-Max (1500 kg)</option>
-    <option value="1200">Mitsubishi L200 (1200 kg)</option>
-    <option value="2000">Nissan Navara (2000 kg)</option>
-  </select>
+<h1>Selamat Datang di Aplikasi Hitung Pembayaran</h1>
 
-  <br>
+<!-- Pilihan Jenis Mobil -->
+<label for="pickupType">Pilih Jenis Mobil Pick-Up:</label>
+<select id="pickupType">
+    <option value="small">Pick-Up Kecil (500kg)</option>
+    <option value="medium">Pick-Up Sedang (1000kg)</option>
+    <option value="large">Pick-Up Besar (1500kg)</option>
+</select>
 
-  <label for="muatan">Masukkan Berat Muatan (kg):</label>
-  <input type="number" id="muatan" placeholder="Berat Muatan (kg)" />
+<br><br>
 
-  <br>
-  
-  <button id="hitungBtn">Hitung Berat Kotor & Total Harga</button>
-  
-  <div id="hasil"></div>
+<!-- Button untuk Mengambil Foto -->
+<button id="takePhoto">Ambil Foto Muatan</button>
+<video id="video" width="300" height="200" autoplay></video>
+<canvas id="canvas" style="display:none;"></canvas>
+<br>
 
-  <div id="total"></div>
+<!-- Formulir untuk Berat Muatan dan Harga -->
+<div>
+    <label for="muatanWeight">Berat Muatan (kg): </label>
+    <input type="number" id="muatanWeight" placeholder="Masukkan berat muatan" disabled>
+</div>
+<div>
+    <label for="hargaPerKg">Harga per kg (Rp): </label>
+    <input type="number" id="hargaPerKg" value="5000" disabled>
+</div>
+<div>
+    <p>Total Harga: <span id="totalHarga">0</span> Rupiah</p>
+</div>
 
-  <h3>Scan QR untuk Foto Mobil:</h3>
-  <div>
-    <label for="cameraSelect">Pilih Kamera:</label>
-    <select id="cameraSelect"></select>
-  </div>
-  <div id="reader"></div>
+<!-- Pembayaran -->
+<div>
+    <label for="payment">Pembayaran Tunai (Rp): </label>
+    <input type="number" id="payment" placeholder="Masukkan pembayaran tunai">
+</div>
+<div>
+    <p>Kembalian: <span id="change">0</span> Rupiah</p>
+</div>
 
-  <script>
-    const hargaPerKg = 1000; // Harga per kg
+<script>
+    // Menyiapkan kamera
+    let video = document.getElementById("video");
+    let canvas = document.getElementById("canvas");
+    let context = canvas.getContext("2d");
+    let takePhotoButton = document.getElementById("takePhoto");
 
-    document.getElementById("hitungBtn").addEventListener("click", function() {
-      const jenisMobil = document.getElementById("mobil").value; // Berat mobil pick-up
-      const beratMuatan = parseFloat(document.getElementById("muatan").value); // Berat muatan dari input
-      const beratMobil = parseFloat(jenisMobil); // Berat mobil yang dipilih
-      const beratKotor = beratMobil + beratMuatan; // Berat Kotor = Berat Mobil + Muatan
-      const hargaTotal = beratKotor * hargaPerKg; // Harga = Berat Kotor * Harga per kg
-
-      // Tampilkan hasil perhitungan
-      document.getElementById("hasil").innerHTML = `
-        Berat Mobil: ${beratMobil} kg<br>
-        Berat Muatan: ${beratMuatan} kg<br>
-        Berat Kotor: ${beratKotor} kg<br>
-        Berat Muatan: ${beratMuatan} kg<br>
-      `;
-      document.getElementById("total").innerHTML = `Total Harga: Rp ${hargaTotal.toLocaleString()}`;
-    });
-
-    // Kamera QR Code
-    const html5QrCode = new Html5Qrcode("reader");
-
-    function mulaiScan(cameraId) {
-      html5QrCode.start(
-        cameraId,
-        { fps: 10, qrbox: 250 },
-        qrText => {
-          alert("QR Code Terdeteksi: " + qrText); // QR Code terdeteksi
-        },
-        error => {}
-      ).catch(err => {
-        document.getElementById("hasil").innerText = "Gagal akses kamera: " + err;
-      });
+    async function startCamera() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
     }
 
-    Html5Qrcode.getCameras().then(devices => {
-      if (devices.length === 0) {
-        document.getElementById("hasil").innerText = "Kamera tidak ditemukan.";
-        return;
-      }
-
-      const cameraSelect = document.getElementById("cameraSelect");
-
-      devices.forEach(device => {
-        const option = document.createElement("option");
-        option.value = device.id;
-        option.text = device.label || `Kamera ${cameraSelect.length + 1}`;
-        cameraSelect.appendChild(option);
-      });
-
-      // Mulai scan dengan kamera pertama yang ditemukan
-      mulaiScan(devices[0].id);
-
-      // Ganti kamera saat pengguna memilih kamera lain
-      cameraSelect.addEventListener("change", function() {
-        html5QrCode.stop().then(() => {
-          mulaiScan(cameraSelect.value);
-        }).catch(err => {
-          document.getElementById("hasil").innerText = "Gagal mengalihkan kamera: " + err;
-        });
-      });
-    }).catch(err => {
-      document.getElementById("hasil").innerText = "Tidak dapat mengakses kamera: " + err;
+    takePhotoButton.addEventListener('click', () => {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Simulasi menghitung berat muatan dari foto
+        let estimatedWeight = Math.random() * 1000 + 500; // Simulasi berat muatan antara 500 - 1500 kg
+        document.getElementById("muatanWeight").value = estimatedWeight.toFixed(2);
+        calculatePrice();
     });
-  </script>
+
+    function calculatePrice() {
+        let muatanWeight = parseFloat(document.getElementById("muatanWeight").value);
+        let hargaPerKg = parseFloat(document.getElementById("hargaPerKg").value);
+        let totalHarga = muatanWeight * hargaPerKg;
+        document.getElementById("totalHarga").textContent = totalHarga.toFixed(2);
+
+        // Menghitung pembayaran dan kembalian
+        let payment = parseFloat(document.getElementById("payment").value) || 0;
+        let change = payment - totalHarga;
+        document.getElementById("change").textContent = change.toFixed(2);
+    }
+
+    document.getElementById("pickupType").addEventListener('change', () => {
+        let pickupType = document.getElementById("pickupType").value;
+        let weightLimit;
+        switch (pickupType) {
+            case "small":
+                weightLimit = 500;
+                break;
+            case "medium":
+                weightLimit = 1000;
+                break;
+            case "large":
+                weightLimit = 1500;
+                break;
+        }
+        // Menampilkan berat muatan maksimal yang dapat diambil oleh mobil
+        document.getElementById("muatanWeight").max = weightLimit;
+    });
+
+    // Mulai kamera saat halaman dibuka
+    startCamera();
+
+    // Memperbarui perhitungan jika ada perubahan di pembayaran
+    document.getElementById("payment").addEventListener('input', calculatePrice);
+
+</script>
 
 </body>
 </html>

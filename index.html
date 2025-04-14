@@ -87,6 +87,10 @@
   <div id="total"></div>
 
   <h3>Scan QR untuk Foto Mobil:</h3>
+  <div>
+    <label for="cameraSelect">Pilih Kamera:</label>
+    <select id="cameraSelect"></select>
+  </div>
   <div id="reader"></div>
 
   <script>
@@ -131,6 +135,8 @@
         return;
       }
 
+      const cameraSelect = document.getElementById("cameraSelect");
+
       devices.forEach(device => {
         const option = document.createElement("option");
         option.value = device.id;
@@ -138,7 +144,17 @@
         cameraSelect.appendChild(option);
       });
 
+      // Mulai scan dengan kamera pertama yang ditemukan
       mulaiScan(devices[0].id);
+
+      // Ganti kamera saat pengguna memilih kamera lain
+      cameraSelect.addEventListener("change", function() {
+        html5QrCode.stop().then(() => {
+          mulaiScan(cameraSelect.value);
+        }).catch(err => {
+          document.getElementById("hasil").innerText = "Gagal mengalihkan kamera: " + err;
+        });
+      });
     }).catch(err => {
       document.getElementById("hasil").innerText = "Tidak dapat mengakses kamera: " + err;
     });

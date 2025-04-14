@@ -1,128 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deteksi Objek dan Estimasi Berat</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f4f4f9;
-        }
-        .container {
-            text-align: center;
-            max-width: 800px;
-            width: 100%;
-        }
-        video {
-            width: 100%;
-            border: 1px solid #ccc;
-        }
-        #predictedWeight {
-            font-size: 1.5em;
-            margin-top: 20px;
-            color: #333;
-        }
-        .info {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Deteksi Benda & Berat Otomatis</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f8f8f8;
+      text-align: center;
+      padding: 20px;
+    }
+    video {
+      width: 80%;
+      max-width: 600px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    #berat, #object {
+      font-size: 20px;
+      margin: 10px;
+      color: green;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 90%;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 8px;
+    }
+    th {
+      background: #eee;
+    }
+  </style>
 </head>
 <body>
+  <h1>Deteksi Benda & Berat Otomatis</h1>
+  <video id="video" autoplay playsinline></video>
+  <div id="object">Benda: -</div>
+  <div id="berat">Berat: -</div>
 
-<div class="container">
-    <h1>Pengenalan Benda dan Estimasi Berat</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-    <div class="info">
-        <h2>Perkiraan Berat:</h2>
-        <p id="predictedWeight">Belum ada data</p>
-    </div>
-</div>
+  <table>
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Benda</th>
+        <th>Berat (kg)</th>
+        <th>Waktu</th>
+      </tr>
+    </thead>
+    <tbody id="data-table"></tbody>
+  </table>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+  <script>
+    const video = document.getElementById('video');
+    const objectLabel = document.getElementById('object');
+    const beratLabel = document.getElementById('berat');
+    const dataTable = document.getElementById('data-table');
+    let objectDetected = "-";
+    let beratTimbangan = "-";
+    let counter = 1;
 
-<script>
-    // Akses elemen HTML
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const context = canvas.getContext("2d");
-    const predictedWeightElem = document.getElementById("predictedWeight");
-
-    // Model COCO-SSD untuk deteksi objek
-    let model;
-
-    // Memuat model COCO-SSD
-    async function loadModel() {
-        model = await cocoSsd.load();
-        detectObjects();
-    }
-
-    // Menyiapkan kamera belakang
+    // Akses kamera belakang
     async function startCamera() {
-        const constraints = {
-            video: { facingMode: "environment" }
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
         video.srcObject = stream;
+      } catch (e) {
+        console.warn("Tidak bisa akses kamera belakang. Menggunakan kamera default.");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      }
     }
 
-    // Fungsi untuk mendeteksi objek dan memperkirakan berat
-    async function detectObjects() {
-        const predictions = await model.detect(video);
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Deteksi benda
+    async function loadModel() {
+      const model = await cocoSsd.load();
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
 
-        predictions.forEach(prediction => {
-            // Menampilkan kotak dan label objek
-            context.beginPath();
-            context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
-            context.lineWidth = 2;
-            context.strokeStyle = "red";
-            context.fillStyle = "red";
-            context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
-
-            // Perkirakan berat berdasarkan objek yang terdeteksi
-            let weight = estimateWeight(prediction.class);
-            predictedWeightElem.textContent = `Prediksi Berat: ${weight} kg`;
-        });
-
-        // Panggil deteksi objek lagi setiap detik
-        setTimeout(detectObjects, 1000);
+      setInterval(async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const predictions = await model.detect(canvas);
+        if (predictions.length > 0) {
+          objectDetected = predictions[0].class;
+          objectLabel.textContent = "Benda: " + objectDetected;
+        }
+      }, 2000);
     }
 
-    // Estimasi berat berdasarkan kelas objek
-    function estimateWeight(objectClass) {
-        const weightDatabase = {
-            "car": 1500,    // Berat mobil dalam kg
-            "bottle": 1,    // Berat botol dalam kg
-            "apple": 0.2,   // Berat apel dalam kg
-            "banana": 0.3,  // Berat pisang dalam kg
-            "dog": 10,      // Berat anjing kecil dalam kg
-            "cat": 4,       // Berat kucing dalam kg
-            "chair": 5,     // Berat kursi dalam kg
-            "table": 10,    // Berat meja dalam kg
-            "laptop": 2,    // Berat laptop dalam kg
-            "backpack": 3,  // Berat tas ransel dalam kg
-            "phone": 0.2,   // Berat ponsel dalam kg
-            // Tambahkan objek lainnya sesuai kebutuhan
-        };
-        return weightDatabase[objectClass] || "Tidak diketahui";
-    }
+    // WebSocket ke server timbangan
+    const socket = new WebSocket("ws://localhost:8080");
 
-    // Mulai kamera dan load model setelah dokumen siap
+    socket.onmessage = function (event) {
+      beratTimbangan = event.data.trim();
+      beratLabel.textContent = "Berat: " + beratTimbangan + " kg";
+
+      if (objectDetected !== "-" && beratTimbangan !== "-") {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${counter++}</td><td>${objectDetected}</td><td>${beratTimbangan}</td><td>${new Date().toLocaleString()}</td>`;
+        dataTable.appendChild(row);
+        objectDetected = "-";
+        beratTimbangan = "-";
+      }
+    };
+
+    // Mulai kamera dan model
     startCamera();
     loadModel();
-</script>
-
+  </script>
 </body>
 </html>
